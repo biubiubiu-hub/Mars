@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>JSXGraph 火箭简易 Demo</title>
+
+  <!-- JSXGraph -->
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css">
+  <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+
+  <style>
+    #box {
+      width: 900px;
+      height: 600px;
+      border: 1px solid #ccc;
+      margin: 16px auto;
+    }
+    #controls {
+      width: 900px;
+      margin: 0 auto;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 14px;
+    }
+    button {
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="box" class="jxgbox"></div>
+
+  <div id="controls">
+    <button id="startBtn">开始动画</button>
+    <button id="stopBtn">暂停动画</button>
+    <span>先看红点沿轨迹运动，确认动画OK</span>
+  </div>
+
+  <script>
+    // 1）初始化画板
+    var board = JXG.JSXGraph.initBoard('box', {
+      boundingbox: [-5, 5, 15, -5], // [xMin, yMax, xMax, yMin]
+      axis: true,
+      showNavigation: false,
+      showCopyright: false
+    });
+
+    // 2）时间参数
+    var tMin = 0;
+    var tMax = 10;
+    var t    = tMin;
+    var dt   = 0.05;   // 每一步时间增量
+
+    // 3）定义轨迹函数（可以随便改）
+    function rocketX(u) {
+      return 0.5 * u;         // 水平前进
+    }
+    function rocketY(u) {
+      return 0.1 * u * u;     // 竖直加速上升
+    }
+
+    // 4）运动点 R（红色点）
+    var R = board.create('point', [
+      function () { return rocketX(t); },
+      function () { return rocketY(t); }
+    ], {
+      name: 'R',
+      size: 4,
+      strokeColor: 'red',
+      fillColor: 'red'
+    });
+
+    // 5）轨迹曲线：从 0 到 t
+    var traj = board.create('curve', [
+      function (u) { return rocketX(u); },
+      function (u) { return rocketY(u); },
+      function () { return tMin; },
+      function () { return t; }
+    ], {
+      strokeWidth: 2,
+      dash: 1
+    });
+
+    // 6）动画控制（用 setInterval，尽量简单）
+    var timer = null;
+
+    function step() {
+      t += dt;
+      if (t > tMax) {
+        t = tMin; // 循环
+      }
+      board.update(); // 只要 t 变，R 和 traj 会自动重算
+    }
+
+    var startBtn = document.getElementById('startBtn');
+    var stopBtn  = document.getElementById('stopBtn');
+
+    startBtn.onclick = function () {
+      if (timer === null) {
+        timer = window.setInterval(step, 30); // 约每 30ms 刷新一次
+      }
+    };
+
+    stopBtn.onclick = function () {
+      if (timer !== null) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    };
+  </script>
+</body>
+</html>

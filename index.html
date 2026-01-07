@@ -12,44 +12,68 @@
   <style>
     :root { --bg:#0b1020; --panel:#121a33; --text:#e7ebff; --muted:#a9b1d6; --line:#2a3566; }
 
-    /* ✅ 关键修复：禁止横向溢出 */
-    html, body {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      overflow-x: hidden;
-    }
+    html, body { width: 100%; height: 100%; margin: 0; overflow-x: hidden; }
 
     body {
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
-      overscroll-behavior: none; /* ✅ 防止触控回弹带动页面 */
+      overscroll-behavior: none;
     }
 
     .wrap {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 360px; /* ✅ 允许左侧收缩 */
+      grid-template-columns: minmax(0, 1fr) 360px;
       gap: 12px;
       padding: 12px;
       box-sizing: border-box;
       height: 100vh;
       width: 100%;
-      max-width: 100vw; /* ✅ 防止撑出视口 */
+      max-width: 100vw;
     }
 
     .card {
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 12px;
-      min-width: 0; /* ✅ 防止 grid 子项撑开列宽 */
+      min-width: 0;
+      overflow: hidden;
     }
 
     #box {
       width: 100%;
       height: calc(100vh - 24px);
+      height: calc(100dvh - 24px);
       border-radius: 12px;
-      touch-action: none; /* ✅ 防止拖拽触发页面左右滑动 */
+
+      touch-action: none;
+
+      overflow: hidden;
+      position: relative;
+      contain: layout paint;
+
+      /* ✅ 背景图（铺满） */
+      background-image: url("assets/space.jpg");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-color: #000;
+    }
+
+    /* ✅ 背景暗色遮罩（提高阅读性，不影响交互） */
+    #box::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: rgba(0,0,0,0.45); /* 0.25~0.60 可调 */
+      z-index: 0;
+      pointer-events:none;
+    }
+
+    /* ✅ 确保 JSXGraph 的 SVG/Canvas 在遮罩上面 */
+    #box > * {
+      position: relative;
+      z-index: 1;
     }
 
     .panel { padding: 14px; display:flex; flex-direction: column; gap: 12px; }
@@ -83,18 +107,11 @@
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .small { font-size: 12px; color: var(--muted); }
 
-    /* ✅ 小屏幕：改成上下布局，彻底避免横向滚动 */
     @media (max-width: 980px) {
-      .wrap {
-        grid-template-columns: 1fr;
-        grid-template-rows: 60vh auto;
-        height: auto;
-        align-content: start;
-      }
+      .wrap { grid-template-columns: 1fr; grid-template-rows: 60vh auto; height: auto; align-content: start; }
       #box { height: 60vh; }
     }
 
-    /* ✅ 更小屏：画布再矮一点，避免“内容很长导致滚动怪异” */
     @media (max-width: 520px) {
       .wrap { grid-template-rows: 52vh auto; }
       #box { height: 52vh; }
@@ -112,8 +129,7 @@
       <div>
         <h1>霍曼转移（科普互动）</h1>
         <div class="hint">
-          目标：让“飞行器（✦）”沿半椭圆到达火星轨道交点时，火星（♂）也刚好到那里。<br/>
-          现在用符号占位。
+          目标：让“飞行器”沿半椭圆到达火星轨道交点时，火星也刚好到那里。
         </div>
       </div>
 
@@ -193,6 +209,13 @@
     }
     function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
 
+    function normDeg0_360(d){
+      d = d % 360;
+      if (d < 0) d += 360;
+      if (Math.abs(d - 360) < 1e-9) d = 0;
+      return d;
+    }
+
     // =========================
     // 1) 模型参数（简化）
     // =========================
@@ -218,89 +241,248 @@
       keepaspectratio: true
     });
 
-    // ⭐ 背景星空点（装饰）
-    (function addStars() {
-      const n = 120;
-      for (let i = 0; i < n; i++) {
-        const x = (Math.random() * 5.2) - 2.6;
-        const y = (Math.random() * 5.2) - 2.6;
-        board.create('point', [x, y], {
-          size: 1, name: '', fixed: true,
-          strokeColor: 'rgba(255,255,255,0.12)',
-          fillColor: 'rgba(255,255,255,0.12)'
-        });
-      }
-    })();
+    // “锚点”点（不显示）
+    const sun = board.create('point', [0, 0], { name:'', fixed:true, size:1, visible:false });
+    const earth = board.create('point', [RE, 0], { name:'', size:1, visible:false });
+    const mars  = board.create('point', [RM * Math.cos(deg2rad(phi0Deg)), RM * Math.sin(deg2rad(phi0Deg))], { name:'', size:1, visible:false });
+    const probe = board.create('point', [RE, 0], { name:'', size:1, visible:false });
 
-    // 太阳
-    const sun = board.create('point', [0, 0], {
-      name: '☉',
-      fixed: true,
-      size: 6,
-      strokeColor: '#ffd166',
-      fillColor: '#ffd166',
-      label: { offset: [10, 10], fontSize: 18, strokeColor: '#ffd166' }
+    // 交会点（火星轨道交点）：(-RM,0)
+    const rendezvous = board.create('point', [-RM, 0], { name:'', fixed:true, size:1, visible:false });
+
+    // （可选）错过时“距离感”的连线（不想要可删）
+    board.create('segment', [probe, mars], {
+      strokeWidth: 2,
+      strokeColor: 'rgba(255,255,255,0.20)',
+      dash: 2,
+      layer: 8
     });
 
-    // 地球轨道
+    // =========================
+    // 2.1) 图片跟随点
+    // 需要的文件：
+    // assets/space.jpg
+    // assets/sun.png
+    // assets/earth.png
+    // assets/mars.png
+    // assets/sat.png
+    // =========================
+    const SZ = { sun: 0.78, earth: 0.42, mars: 0.22, probe: 0.28 };
+
+    function followPointImage(url, pt, size, layer=12) {
+      const w = size, h = size;
+      return board.create('image', [
+        url,
+        [
+          () => pt.X() - w/2,
+          () => pt.Y() - h/2
+        ],
+        [w, h]
+      ], { fixed:true, layer });
+    }
+
+followPointImage('assets/sun.png',   sun,   SZ.sun,   12);
+followPointImage('assets/earth.png', earth, SZ.earth, 12);
+followPointImage('assets/mars.png',  mars,  SZ.mars,  12);
+const probeImg = followPointImage('assets/sat.png', probe, SZ.probe, 12);
+
+    // =========================
+    // 2.2) 标签：跟随点的文字
+    // =========================
+    const labelStyle = {
+      fixed: true,
+      layer: 20,
+      highlight: false,
+      strokeColor: 'rgba(255,255,255,0.92)',
+      fontSize: 14
+    };
+
+    function followLabel(text, pt, dx, dy) {
+      return board.create('text', [
+        () => pt.X() + dx,
+        () => pt.Y() + dy,
+        text
+      ], labelStyle);
+    }
+
+    // 文字标签偏移（单位：用户坐标）。值越小，越贴近图标。
+    followLabel('太阳',   sun,   SZ.sun*0.35,   SZ.sun*0.30);
+    followLabel('地球',   earth, SZ.earth*0.40, SZ.earth*0.28);
+    followLabel('火星',   mars,  SZ.mars*0.65,  SZ.mars*0.55);
+    followLabel('探测器', probe, SZ.probe*0.70, SZ.probe*0.55);
+
+    // =========================
+    // 2.3) 相遇/失败视觉反馈（成功：绿光圈；失败：红X + 早/晚方向箭头）
+    // =========================
+    let meetPulseR = 0.001;
+    let meetPulseOn = false;
+
+    const meetPulse = board.create('circle', [rendezvous, () => meetPulseR], {
+      visible: false,
+      fixed: true,
+      strokeWidth: 3,
+      strokeColor: 'rgba(120,255,180,0.85)',
+      fillColor: 'rgba(120,255,180,0.10)',
+      layer: 30
+    });
+
+    const meetTag = board.create('text', [
+      () => rendezvous.X() + 0.14,
+      () => rendezvous.Y() - 0.16,
+      () => '✅ 相遇成功'
+    ], {
+      visible: false,
+      fixed: true,
+      layer: 30,
+      fontSize: 16,
+      strokeColor: 'rgba(200,255,210,0.95)'
+    });
+
+    const failX = board.create('text', [
+      () => rendezvous.X() - 0.10,
+      () => rendezvous.Y() + 0.16,
+      () => '✘'
+    ], {
+      visible: false,
+      fixed: true,
+      layer: 30,
+      fontSize: 28,
+      strokeColor: 'rgba(255,90,90,0.95)'
+    });
+
+    // 失败方向箭头：在交会点(-RM,0) 处，轨道逆时针方向切线指向 +y
+    const failArrowEnd = board.create('point', [rendezvous.X(), rendezvous.Y()], {
+      visible: false, fixed: true
+    });
+
+    const failArrow = board.create('arrow', [rendezvous, failArrowEnd], {
+      visible: false,
+      fixed: true,
+      layer: 30,
+      strokeWidth: 4,
+      strokeColor: 'rgba(255,90,90,0.85)'
+    });
+
+    const failTag = board.create('text', [
+      () => failArrowEnd.X() + 0.10,
+      () => failArrowEnd.Y(),
+      () => '（未运行）'
+    ], {
+      visible: false,
+      fixed: true,
+      layer: 30,
+      fontSize: 14,
+      strokeColor: 'rgba(255,150,150,0.95)'
+    });
+
+    function hideAllFX() {
+      meetPulseOn = false;
+      meetPulseR = 0.001;
+      meetPulse.setAttribute({ visible: false });
+      meetTag.setAttribute({ visible: false });
+
+      failX.setAttribute({ visible: false });
+      failArrow.setAttribute({ visible: false });
+      failTag.setAttribute({ visible: false });
+
+      board.update();
+    }
+
+    function triggerMeetFXSuccess() {
+      // 交会点绿光圈 + 成功浮标
+      meetPulseOn = true;
+      meetPulseR = 0.03;
+      meetPulse.setAttribute({ visible: true, strokeColor: 'rgba(120,255,180,0.85)', fillColor: 'rgba(120,255,180,0.10)' });
+      meetTag.setAttribute({ visible: true });
+
+      // 2秒后隐藏文字
+      setTimeout(() => {
+        meetTag.setAttribute({ visible: false });
+        board.update();
+      }, 2000);
+
+      // 光圈扩散渐隐
+      let alpha = 0.85;
+      const startR = 0.03;
+      const endR = 0.55;  // 扩散到多大（用户坐标）
+      const dur = 900;    // ms
+      const t0 = performance.now();
+
+      function tick(now) {
+        if (!meetPulseOn) return;
+        const p = Math.min(1, (now - t0) / dur);
+        meetPulseR = startR + (endR - startR) * p;
+        alpha = 0.85 * (1 - p);
+
+        meetPulse.setAttribute({
+          strokeColor: `rgba(120,255,180,${alpha.toFixed(3)})`,
+          fillColor:   `rgba(120,255,180,${(0.10*(1-p)).toFixed(3)})`
+        });
+
+        board.update();
+
+        if (p < 1) requestAnimationFrame(tick);
+        else {
+          meetPulseOn = false;
+          meetPulse.setAttribute({ visible: false });
+          board.update();
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function triggerFailFX(errDeg) {
+      // errDeg > 0: 火星到达时“超过”交会点（发射晚了）
+      // errDeg < 0: 火星还没到交会点（发射早了）
+      const late = errDeg > 0;
+
+      // 箭头方向：交会点处切线，逆时针为 +y，顺时针为 -y
+      const dir = late ? +1 : -1;
+      const L = 0.60; // 箭头长度（用户坐标）
+
+      failArrowEnd.setPosition(JXG.COORDS_BY_USER, [rendezvous.X(), rendezvous.Y() + dir * L]);
+
+      failX.setAttribute({ visible: true });
+      failArrow.setAttribute({ visible: true });
+      failTag.setAttribute({
+        visible: true,
+        strokeColor: 'rgba(255,150,150,0.95)'
+      });
+
+      // 给出“早/晚”提示 + 用箭头表示“应该往哪个方向调整相位”
+      // late: 发射晚了 -> 相位要更小（更早发射） -> 提示“往后调/提前”
+      // early: 发射早了 -> 相位要更大（更晚发射） -> 提示“往前调/推迟”
+      const msg = late ? '晚了：火星已越过交会点 ↑' : '早了：火星还没到交会点 ↓';
+      failTag.setText(msg);
+
+      // 让提示出现 2.5 秒后自动淡出（也可改成一直显示到 reset）
+      setTimeout(() => {
+        failX.setAttribute({ visible: false });
+        failArrow.setAttribute({ visible: false });
+        failTag.setAttribute({ visible: false });
+        board.update();
+      }, 2500);
+
+      board.update();
+    }
+
+    // =========================
+    // 2.4) 轨道曲线
+    // =========================
     board.create('circle', [sun, RE], {
       strokeWidth: 1,
-      strokeColor: 'rgba(180,200,255,0.35)'
+      strokeColor: 'rgba(180,200,255,0.35)',
+      layer: 5
     });
 
-    // 火星轨道 & 转移轨道曲线（可重建）
     let marsOrbit = null;
     let transferFull = null;
     let transferHalf = null;
 
-    // 行星与飞行器（符号占位）
-    const earth = board.create('point', [RE, 0], {
-      name: '⊕',
-      size: 6,
-      strokeColor: '#8ecae6',
-      fillColor: '#8ecae6',
-      label: { offset: [10, -8], fontSize: 16, strokeColor: '#8ecae6' }
-    });
-
-    const mars = board.create('point', [RM * Math.cos(deg2rad(phi0Deg)), RM * Math.sin(deg2rad(phi0Deg))], {
-      name: '♂',
-      size: 6,
-      strokeColor: '#ff6b6b',
-      fillColor: '#ff6b6b',
-      label: { offset: [10, -8], fontSize: 16, strokeColor: '#ff6b6b' }
-    });
-
-    const probe = board.create('point', [RE, 0], {
-      name: '✦',
-      size: 5,
-      strokeColor: '#c7f9cc',
-      fillColor: '#c7f9cc',
-      label: { offset: [10, 10], fontSize: 16, strokeColor: '#c7f9cc' }
-    });
-
-    // 相遇点（火星轨道上的交点）：默认 (-RM,0)
-    const rendezvous = board.create('point', [-RM, 0], {
-      name: '◎',
-      fixed: true,
-      size: 4,
-      strokeColor: 'rgba(255,255,255,0.6)',
-      fillColor: 'rgba(255,255,255,0.2)',
-      label: { offset: [10, 10], fontSize: 14, strokeColor: 'rgba(255,255,255,0.8)' }
-    });
-
-    // 连接线（展示错过时的“距离感”）
-    board.create('segment', [probe, mars], {
-      strokeWidth: 2,
-      strokeColor: 'rgba(255,255,255,0.20)',
-      dash: 2
-    });
-
     // =========================
     // 3) 轨道计算：周期、转移时间、理想相位
     // =========================
-    function getTM(RM) {
-      return TE * Math.pow(RM / RE, 1.5);
-    }
+    function getTM(RM) { return TE * Math.pow(RM / RE, 1.5); }
 
     function getTransferTimeHohmann(RM) {
       const a = (RE + RM) / 2;
@@ -309,12 +491,11 @@
     }
 
     function getPhiStarDeg(RM) {
-      // 条件：phi + omegaM*ttr ≈ pi
       const TM = getTM(RM);
       const omegaM = TAU / TM;
       const { ttr } = getTransferTimeHohmann(RM);
       const phiStar = wrapTo2Pi(Math.PI - omegaM * ttr);
-      return rad2deg(phiStar);
+      return normDeg0_360(rad2deg(phiStar));
     }
 
     // =========================
@@ -328,6 +509,42 @@
       return [r * Math.cos(theta), r * Math.sin(theta)];
     }
 
+    // =========================
+    // 4.1) 卫星贴图随轨道方向旋转（SVG 渲染）
+    // =========================
+    // sat.png 默认朝向如果不是“朝右”，用这个偏置角修正（单位：度）
+    // 常见：图片朝上可试 -90 / +90
+    const SAT_ICON_OFFSET_DEG = 0;
+
+    // 转移椭圆上参数 theta 的切线方向角（≈速度方向，弧度）
+    function tangentAngleOnTransfer(theta, RM) {
+      const r1 = RE, r2 = RM;
+      const a = (r1 + r2) / 2;
+      const e = (r2 - r1) / (r2 + r1);
+      const p = a * (1 - e * e);
+
+      const denom = 1 + e * Math.cos(theta);
+      const r = p / denom;
+
+      // dr/dtheta
+      const dr = (p * e * Math.sin(theta)) / (denom * denom);
+
+      // x = r cosθ, y = r sinθ
+      const dx = dr * Math.cos(theta) - r * Math.sin(theta);
+      const dy = dr * Math.sin(theta) + r * Math.cos(theta);
+
+      return Math.atan2(dy, dx);
+    }
+
+    // 围绕“点的屏幕坐标中心”旋转 SVG image
+    function rotateSvgImageAroundPoint(img, pt, angleRad, offsetDeg = 0) {
+      if (!img || !img.rendNode || !pt || !pt.coords) return;
+      const cx = pt.coords.scrCoords[1];
+      const cy = pt.coords.scrCoords[2];
+      const deg = angleRad * 180 / Math.PI + offsetDeg;
+      img.rendNode.setAttribute('transform', `rotate(${deg} ${cx} ${cy})`);
+    }
+
     function rebuildCurves() {
       if (marsOrbit) board.removeObject(marsOrbit);
       if (transferFull) board.removeObject(transferFull);
@@ -335,25 +552,21 @@
 
       marsOrbit = board.create('circle', [sun, RM], {
         strokeWidth: 1,
-        strokeColor: 'rgba(255,180,180,0.35)'
+        strokeColor: 'rgba(255,180,180,0.35)',
+        layer: 5
       });
 
-      transferFull = board.create('curve', [
-        function(t){ return ellipseXY(t, RM)[0]; },
-        function(t){ return ellipseXY(t, RM)[1]; },
-        0, TAU
-      ], {
-        strokeWidth: 1,
-        strokeColor: 'rgba(255,255,255,0.10)'
-      });
 
+
+      // 半圈强调（实线）
       transferHalf = board.create('curve', [
         function(t){ return ellipseXY(t, RM)[0]; },
         function(t){ return ellipseXY(t, RM)[1]; },
         0, Math.PI
       ], {
         strokeWidth: 3,
-        strokeColor: 'rgba(199,249,204,0.75)'
+        strokeColor: 'rgba(199,249,204,0.75)',
+        layer: 7
       });
 
       rendezvous.setPosition(JXG.COORDS_BY_USER, [-RM, 0]);
@@ -368,25 +581,29 @@
     let lastTs = null;
 
     function setBodiesAtTime(t) {
+      board.suspendUpdate();
+
       const TM = getTM(RM);
       const omegaM = TAU / TM;
       const phi0 = deg2rad(phi0Deg);
 
-      // 行星角度
       const thE = omegaE * t;
       const thM = phi0 + omegaM * t;
 
       earth.setPosition(JXG.COORDS_BY_USER, [RE * Math.cos(thE), RE * Math.sin(thE)]);
       mars.setPosition(JXG.COORDS_BY_USER, [RM * Math.cos(thM), RM * Math.sin(thM)]);
 
-      // 飞行器沿半椭圆 0->pi
       const { ttr } = getTransferTimeHohmann(RM);
       const p = clamp(t / ttr, 0, 1);
       const theta = p * Math.PI;
       const [x, y] = ellipseXY(theta, RM);
       probe.setPosition(JXG.COORDS_BY_USER, [x, y]);
 
-      board.update();
+      // ✅ 卫星贴图沿速度方向旋转
+      const ang = tangentAngleOnTransfer(theta, RM);
+      rotateSvgImageAroundPoint(probeImg, probe, ang, SAT_ICON_OFFSET_DEG);
+
+      board.unsuspendUpdate();
     }
 
     function computeAndShowStatus(final=false) {
@@ -414,19 +631,44 @@
 
       if (ok) {
         resultEl.textContent = '✅ 相遇成功（窗口对上了）';
+
+        // ✅ 视觉上“对接/相遇”：让探测器贴到火星位置
+        probe.setPosition(JXG.COORDS_BY_USER, [mars.X(), mars.Y()]);
+        board.update();
+
+        // ✅ 相遇时（theta=π）也把姿态对齐一下
+        rotateSvgImageAroundPoint(probeImg, probe, tangentAngleOnTransfer(Math.PI, RM), SAT_ICON_OFFSET_DEG);
+
+        triggerMeetFXSuccess();
       } else {
         const hint = (errDeg > 0)
           ? '❌ 错过：你发射“晚了”（火星已在前方）'
           : '❌ 错过：你发射“早了”（火星还在后方）';
         resultEl.textContent = hint;
+
+        // ✅ 失败特效：红X + 方向箭头（早/晚）
+        triggerFailFX(errDeg);
       }
+    }
+
+    function setButtons() {
+      document.getElementById('run').disabled = running;
+      document.getElementById('autoPhi').disabled = running;
     }
 
     function resetSim() {
       running = false;
+      setButtons();
       tDays = 0;
       lastTs = null;
+
+      hideAllFX();           // ✅ 复位时关掉所有特效
+
       setBodiesAtTime(0);
+
+      // ✅ 初始帧也对齐卫星姿态
+      rotateSvgImageAroundPoint(probeImg, probe, tangentAngleOnTransfer(0, RM), SAT_ICON_OFFSET_DEG);
+
       document.getElementById('errDeg').textContent = '—';
       document.getElementById('resultText').textContent = '未运行';
       board.update();
@@ -445,6 +687,7 @@
         tDays = ttr;
         setBodiesAtTime(tDays);
         running = false;
+        setButtons();
         computeAndShowStatus(true);
         return;
       }
@@ -497,6 +740,7 @@
       if (running) return;
       resetSim();
       running = true;
+      setButtons();
       lastTs = null;
       requestAnimationFrame(step);
     });

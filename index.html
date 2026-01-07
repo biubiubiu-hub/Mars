@@ -3,759 +3,80 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>霍曼转移</title>
-
-  <!-- JSXGraph -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
-  <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+  <title>大国重器 · 场景菜单</title>
 
   <style>
     :root { --bg:#0b1020; --panel:#121a33; --text:#e7ebff; --muted:#a9b1d6; --line:#2a3566; }
-
-    html, body { width: 100%; height: 100%; margin: 0; overflow-x: hidden; }
-
+    html, body { width: 100%; height: 100%; margin: 0; }
     body {
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
-      overscroll-behavior: none;
     }
-
-    .wrap {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 360px;
-      gap: 12px;
-      padding: 12px;
-      box-sizing: border-box;
-      height: 100vh;
-      width: 100%;
-      max-width: 100vw;
-    }
-
+    .wrap { max-width: 980px; margin: 0 auto; padding: 18px 14px 28px; }
+    h1 { margin: 0; font-size: 18px; }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.6; margin-top: 6px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 14px; }
     .card {
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 12px;
-      min-width: 0;
-      overflow: hidden;
+      padding: 14px;
+      min-height: 110px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
     }
-
-    #box {
-      width: 100%;
-      height: calc(100vh - 24px);
-      height: calc(100dvh - 24px);
-      border-radius: 12px;
-
-      touch-action: none;
-
-      overflow: hidden;
-      position: relative;
-      contain: layout paint;
-
-      /* ✅ 背景图（铺满） */
-      background-image: url("assets/space.jpg");
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-color: #000;
+    .card h2 { margin: 0; font-size: 15px; }
+    .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    a.btn {
+      display:inline-block;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #18224a;
+      color: var(--text);
+      text-decoration:none;
+      font-weight: 700;
+      width: fit-content;
     }
-
-    /* ✅ 背景暗色遮罩（提高阅读性，不影响交互） */
-    #box::before{
-      content:"";
-      position:absolute;
-      inset:0;
-      background: rgba(0,0,0,0.45); /* 0.25~0.60 可调 */
-      z-index: 0;
-      pointer-events:none;
-    }
-
-    /* ✅ 确保 JSXGraph 的 SVG/Canvas 在遮罩上面 */
-    #box > * {
-      position: relative;
-      z-index: 1;
-    }
-
-    .panel { padding: 14px; display:flex; flex-direction: column; gap: 12px; }
-
-    h1 { font-size: 16px; margin: 0 0 6px 0; }
-    .row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-    .row label { font-size: 13px; color: var(--muted); }
-    .row .val { font-variant-numeric: tabular-nums; font-size: 13px; }
-
-    input[type="range"] { width: 100%; }
-
-    .btns { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-    button {
-      padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
-      background: #18224a; color: var(--text); cursor: pointer; font-weight: 600;
-    }
-    button:hover { filter: brightness(1.07); }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-
-    .hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
-
-    .status {
-      padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
-      background: rgba(255,255,255,0.03); font-size: 13px; line-height: 1.55;
-      font-variant-numeric: tabular-nums;
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .small { font-size: 12px; color: var(--muted); }
-
-    @media (max-width: 980px) {
-      .wrap { grid-template-columns: 1fr; grid-template-rows: 60vh auto; height: auto; align-content: start; }
-      #box { height: 60vh; }
-    }
-
-    @media (max-width: 520px) {
-      .wrap { grid-template-rows: 52vh auto; }
-      #box { height: 52vh; }
-    }
+    a.btn:hover { filter: brightness(1.07); }
+    .small { margin-top: 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
   </style>
 </head>
 
 <body>
+
   <div class="wrap">
-    <div class="card">
-      <div id="box" class="jxgbox"></div>
+    <div>
+      <h1>大国重器 · 科普互动</h1>
+      <div class="hint">请选择一个场景进入体验。每个场景是独立页面（多页面隔离），切换更稳。</div>
     </div>
 
-    <div class="card panel">
-      <div>
-        <h1>霍曼转移（科普互动）</h1>
-        <div class="hint">
-          目标：让“飞行器”沿半椭圆到达火星轨道交点时，火星也刚好到那里。
-        </div>
+    <div class="grid">
+      <div class="card">
+        <h2>霍曼转移</h2>
+        <p>调节火星轨道半径 R<sub>M</sub> 与相位角 φ，体验“发射窗口”对齐才能相遇。</p>
+        <a class="btn" href="scenes/hohmann.html">进入场景 →</a>
       </div>
 
-      <div class="card" style="padding:12px;">
-        <div class="row">
-          <label>火星轨道半径 R<sub>M</sub>（以地球=1）</label>
-          <div class="val mono"><span id="rmVal">1.50</span></div>
-        </div>
-        <input id="rm" type="range" min="1.20" max="2.20" step="0.01" value="1.50" />
-        <div class="small">调大 R<sub>M</sub>：外圈更大，转移弧更“拉长”，转移时间更长。</div>
+      <div class="card">
+        <h2>火箭发射（高度–时间）</h2>
+        <p>用二次函数 h(t)=at²+bt+c 描述“高度随时间变化”，上升实线、下降虚线，学习顶点与判别式。</p>
+        <a class="btn" href="scenes/rocket.html">进入场景 →</a>
       </div>
 
-      <div class="card" style="padding:12px;">
-        <div class="row">
-          <label>发射相位角 φ（火星领先地球的角度）</label>
-          <div class="val mono"><span id="phiVal">44.0</span>°</div>
-        </div>
-        <input id="phi" type="range" min="0" max="360" step="0.1" value="44" />
-        <div class="row" style="margin-top:8px;">
-          <label>自动对准“窗口”</label>
-          <button id="autoPhi">一键对准</button>
-        </div>
-        <div class="small">相位角不对：你到达交点时，火星会“早了/晚了”，错过相遇。</div>
+      <div class="card" style="opacity:.7;">
+        <h2>（预留）更多场景</h2>
+        <p>后续你可以在 <code>scenes/</code> 目录新增页面，然后在这里加一个卡片链接即可。</p>
+        <a class="btn" href="#" onclick="return false;" aria-disabled="true">敬请期待</a>
       </div>
+    </div>
 
-      <div class="card" style="padding:12px;">
-        <div class="row">
-          <label>动画速度（天/秒）</label>
-          <div class="val mono"><span id="spdVal">20</span></div>
-        </div>
-        <input id="spd" type="range" min="5" max="80" step="1" value="20" />
-        <div class="small">只影响演示速度，不改变轨道计算。</div>
-      </div>
-
-      <div class="btns">
-        <button id="run">运行（发射）</button>
-        <button id="reset">复位</button>
-      </div>
-
-      <div class="status" id="status">
-        <div><b>当前模型（简化）</b></div>
-        <div>地球公转周期：<span class="mono">T<sub>E</sub>=365</span> 天</div>
-        <div>火星公转周期：<span class="mono">T<sub>M</sub>=</span><span class="mono" id="tmVal">—</span> 天</div>
-        <div>霍曼转移时间：<span class="mono">t<sub>tr</sub>=</span><span class="mono" id="ttrVal">—</span> 天</div>
-        <div>理想窗口相位：<span class="mono">φ*</span>=<span class="mono" id="phiStarVal">—</span>°</div>
-        <hr style="border:none;border-top:1px solid var(--line);margin:10px 0;">
-        <div><b>相遇判定</b></div>
-        <div>相遇角误差：<span class="mono" id="errDeg">—</span>°</div>
-        <div>结论：<span class="mono" id="resultText">未运行</span></div>
-        <div class="small">判定阈值：|误差| ≤ <span class="mono" id="tolVal">5</span>° 视为“相遇成功”。</div>
-      </div>
-
-      <div class="hint">
-        教学建议：<br/>
-        ① 先自由拖动 φ 看“早/晚”错过；② 再点“一键对准”体会“窗口”；③ 再改变 R<sub>M</sub> 看窗口随轨道变化。
-      </div>
+    <div class="small">
+      目录约定：<code>/assets</code> 放图片等资源；<code>/scenes</code> 放每个场景页面；<code>/shared</code> 放共享样式/工具（可选）。
     </div>
   </div>
-
-  <script>
-    // =========================
-    // 0) 小工具
-    // =========================
-    const TAU = Math.PI * 2;
-    const deg2rad = d => d * Math.PI / 180;
-    const rad2deg = r => r * 180 / Math.PI;
-
-    function wrapToPi(x) {
-      x = (x + Math.PI) % (2 * Math.PI);
-      if (x <= 0) x += 2 * Math.PI;
-      return x - Math.PI;
-    }
-    function wrapTo2Pi(x) {
-      x = x % (2 * Math.PI);
-      if (x < 0) x += 2 * Math.PI;
-      return x;
-    }
-    function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
-
-    function normDeg0_360(d){
-      d = d % 360;
-      if (d < 0) d += 360;
-      if (Math.abs(d - 360) < 1e-9) d = 0;
-      return d;
-    }
-
-    // =========================
-    // 1) 模型参数（简化）
-    // =========================
-    const RE = 1.0;
-    const TE = 365.0;
-    const omegaE = TAU / TE; // rad/day
-
-    let RM = 1.5;
-    let phi0Deg = 44.0;
-    let daysPerSec = 20;
-
-    const TOL_DEG = 5;
-    document.getElementById('tolVal').textContent = String(TOL_DEG);
-
-    // =========================
-    // 2) JSXGraph 画布
-    // =========================
-    const board = JXG.JSXGraph.initBoard('box', {
-      boundingbox: [-2.6, 2.6, 2.6, -2.6],
-      axis: false,
-      showCopyright: false,
-      showNavigation: false,
-      keepaspectratio: true
-    });
-
-    // “锚点”点（不显示）
-    const sun = board.create('point', [0, 0], { name:'', fixed:true, size:1, visible:false });
-    const earth = board.create('point', [RE, 0], { name:'', size:1, visible:false });
-    const mars  = board.create('point', [RM * Math.cos(deg2rad(phi0Deg)), RM * Math.sin(deg2rad(phi0Deg))], { name:'', size:1, visible:false });
-    const probe = board.create('point', [RE, 0], { name:'', size:1, visible:false });
-
-    // 交会点（火星轨道交点）：(-RM,0)
-    const rendezvous = board.create('point', [-RM, 0], { name:'', fixed:true, size:1, visible:false });
-
-    // （可选）错过时“距离感”的连线（不想要可删）
-    board.create('segment', [probe, mars], {
-      strokeWidth: 2,
-      strokeColor: 'rgba(255,255,255,0.20)',
-      dash: 2,
-      layer: 8
-    });
-
-    // =========================
-    // 2.1) 图片跟随点
-    // 需要的文件：
-    // assets/space.jpg
-    // assets/sun.png
-    // assets/earth.png
-    // assets/mars.png
-    // assets/sat.png
-    // =========================
-    const SZ = { sun: 0.78, earth: 0.42, mars: 0.22, probe: 0.28 };
-
-    function followPointImage(url, pt, size, layer=12) {
-      const w = size, h = size;
-      return board.create('image', [
-        url,
-        [
-          () => pt.X() - w/2,
-          () => pt.Y() - h/2
-        ],
-        [w, h]
-      ], { fixed:true, layer });
-    }
-
-followPointImage('assets/sun.png',   sun,   SZ.sun,   12);
-followPointImage('assets/earth.png', earth, SZ.earth, 12);
-followPointImage('assets/mars.png',  mars,  SZ.mars,  12);
-const probeImg = followPointImage('assets/sat.png', probe, SZ.probe, 12);
-
-    // =========================
-    // 2.2) 标签：跟随点的文字
-    // =========================
-    const labelStyle = {
-      fixed: true,
-      layer: 20,
-      highlight: false,
-      strokeColor: 'rgba(255,255,255,0.92)',
-      fontSize: 14
-    };
-
-    function followLabel(text, pt, dx, dy) {
-      return board.create('text', [
-        () => pt.X() + dx,
-        () => pt.Y() + dy,
-        text
-      ], labelStyle);
-    }
-
-    // 文字标签偏移（单位：用户坐标）。值越小，越贴近图标。
-    followLabel('太阳',   sun,   SZ.sun*0.35,   SZ.sun*0.30);
-    followLabel('地球',   earth, SZ.earth*0.40, SZ.earth*0.28);
-    followLabel('火星',   mars,  SZ.mars*0.65,  SZ.mars*0.55);
-    followLabel('探测器', probe, SZ.probe*0.70, SZ.probe*0.55);
-
-    // =========================
-    // 2.3) 相遇/失败视觉反馈（成功：绿光圈；失败：红X + 早/晚方向箭头）
-    // =========================
-    let meetPulseR = 0.001;
-    let meetPulseOn = false;
-
-    const meetPulse = board.create('circle', [rendezvous, () => meetPulseR], {
-      visible: false,
-      fixed: true,
-      strokeWidth: 3,
-      strokeColor: 'rgba(120,255,180,0.85)',
-      fillColor: 'rgba(120,255,180,0.10)',
-      layer: 30
-    });
-
-    const meetTag = board.create('text', [
-      () => rendezvous.X() + 0.14,
-      () => rendezvous.Y() - 0.16,
-      () => '✅ 相遇成功'
-    ], {
-      visible: false,
-      fixed: true,
-      layer: 30,
-      fontSize: 16,
-      strokeColor: 'rgba(200,255,210,0.95)'
-    });
-
-    const failX = board.create('text', [
-      () => rendezvous.X() - 0.10,
-      () => rendezvous.Y() + 0.16,
-      () => '✘'
-    ], {
-      visible: false,
-      fixed: true,
-      layer: 30,
-      fontSize: 28,
-      strokeColor: 'rgba(255,90,90,0.95)'
-    });
-
-    // 失败方向箭头：在交会点(-RM,0) 处，轨道逆时针方向切线指向 +y
-    const failArrowEnd = board.create('point', [rendezvous.X(), rendezvous.Y()], {
-      visible: false, fixed: true
-    });
-
-    const failArrow = board.create('arrow', [rendezvous, failArrowEnd], {
-      visible: false,
-      fixed: true,
-      layer: 30,
-      strokeWidth: 4,
-      strokeColor: 'rgba(255,90,90,0.85)'
-    });
-
-    const failTag = board.create('text', [
-      () => failArrowEnd.X() + 0.10,
-      () => failArrowEnd.Y(),
-      () => '（未运行）'
-    ], {
-      visible: false,
-      fixed: true,
-      layer: 30,
-      fontSize: 14,
-      strokeColor: 'rgba(255,150,150,0.95)'
-    });
-
-    function hideAllFX() {
-      meetPulseOn = false;
-      meetPulseR = 0.001;
-      meetPulse.setAttribute({ visible: false });
-      meetTag.setAttribute({ visible: false });
-
-      failX.setAttribute({ visible: false });
-      failArrow.setAttribute({ visible: false });
-      failTag.setAttribute({ visible: false });
-
-      board.update();
-    }
-
-    function triggerMeetFXSuccess() {
-      // 交会点绿光圈 + 成功浮标
-      meetPulseOn = true;
-      meetPulseR = 0.03;
-      meetPulse.setAttribute({ visible: true, strokeColor: 'rgba(120,255,180,0.85)', fillColor: 'rgba(120,255,180,0.10)' });
-      meetTag.setAttribute({ visible: true });
-
-      // 2秒后隐藏文字
-      setTimeout(() => {
-        meetTag.setAttribute({ visible: false });
-        board.update();
-      }, 2000);
-
-      // 光圈扩散渐隐
-      let alpha = 0.85;
-      const startR = 0.03;
-      const endR = 0.55;  // 扩散到多大（用户坐标）
-      const dur = 900;    // ms
-      const t0 = performance.now();
-
-      function tick(now) {
-        if (!meetPulseOn) return;
-        const p = Math.min(1, (now - t0) / dur);
-        meetPulseR = startR + (endR - startR) * p;
-        alpha = 0.85 * (1 - p);
-
-        meetPulse.setAttribute({
-          strokeColor: `rgba(120,255,180,${alpha.toFixed(3)})`,
-          fillColor:   `rgba(120,255,180,${(0.10*(1-p)).toFixed(3)})`
-        });
-
-        board.update();
-
-        if (p < 1) requestAnimationFrame(tick);
-        else {
-          meetPulseOn = false;
-          meetPulse.setAttribute({ visible: false });
-          board.update();
-        }
-      }
-      requestAnimationFrame(tick);
-    }
-
-    function triggerFailFX(errDeg) {
-      // errDeg > 0: 火星到达时“超过”交会点（发射晚了）
-      // errDeg < 0: 火星还没到交会点（发射早了）
-      const late = errDeg > 0;
-
-      // 箭头方向：交会点处切线，逆时针为 +y，顺时针为 -y
-      const dir = late ? +1 : -1;
-      const L = 0.60; // 箭头长度（用户坐标）
-
-      failArrowEnd.setPosition(JXG.COORDS_BY_USER, [rendezvous.X(), rendezvous.Y() + dir * L]);
-
-      failX.setAttribute({ visible: true });
-      failArrow.setAttribute({ visible: true });
-      failTag.setAttribute({
-        visible: true,
-        strokeColor: 'rgba(255,150,150,0.95)'
-      });
-
-      // 给出“早/晚”提示 + 用箭头表示“应该往哪个方向调整相位”
-      // late: 发射晚了 -> 相位要更小（更早发射） -> 提示“往后调/提前”
-      // early: 发射早了 -> 相位要更大（更晚发射） -> 提示“往前调/推迟”
-      const msg = late ? '晚了：火星已越过交会点 ↑' : '早了：火星还没到交会点 ↓';
-      failTag.setText(msg);
-
-      // 让提示出现 2.5 秒后自动淡出（也可改成一直显示到 reset）
-      setTimeout(() => {
-        failX.setAttribute({ visible: false });
-        failArrow.setAttribute({ visible: false });
-        failTag.setAttribute({ visible: false });
-        board.update();
-      }, 2500);
-
-      board.update();
-    }
-
-    // =========================
-    // 2.4) 轨道曲线
-    // =========================
-    board.create('circle', [sun, RE], {
-      strokeWidth: 1,
-      strokeColor: 'rgba(180,200,255,0.35)',
-      layer: 5
-    });
-
-    let marsOrbit = null;
-    let transferFull = null;
-    let transferHalf = null;
-
-    // =========================
-    // 3) 轨道计算：周期、转移时间、理想相位
-    // =========================
-    function getTM(RM) { return TE * Math.pow(RM / RE, 1.5); }
-
-    function getTransferTimeHohmann(RM) {
-      const a = (RE + RM) / 2;
-      const Ttr = TE * Math.pow(a / RE, 1.5);
-      return { a, Ttr, ttr: 0.5 * Ttr };
-    }
-
-    function getPhiStarDeg(RM) {
-      const TM = getTM(RM);
-      const omegaM = TAU / TM;
-      const { ttr } = getTransferTimeHohmann(RM);
-      const phiStar = wrapTo2Pi(Math.PI - omegaM * ttr);
-      return normDeg0_360(rad2deg(phiStar));
-    }
-
-    // =========================
-    // 4) 转移椭圆（太阳为焦点）的极坐标表达
-    // =========================
-    function ellipseXY(theta, RM) {
-      const r1 = RE, r2 = RM;
-      const a = (r1 + r2) / 2;
-      const e = (r2 - r1) / (r2 + r1);
-      const r = (a * (1 - e * e)) / (1 + e * Math.cos(theta));
-      return [r * Math.cos(theta), r * Math.sin(theta)];
-    }
-
-    // =========================
-    // 4.1) 卫星贴图随轨道方向旋转（SVG 渲染）
-    // =========================
-    // sat.png 默认朝向如果不是“朝右”，用这个偏置角修正（单位：度）
-    // 常见：图片朝上可试 -90 / +90
-    const SAT_ICON_OFFSET_DEG = 0;
-
-    // 转移椭圆上参数 theta 的切线方向角（≈速度方向，弧度）
-    function tangentAngleOnTransfer(theta, RM) {
-      const r1 = RE, r2 = RM;
-      const a = (r1 + r2) / 2;
-      const e = (r2 - r1) / (r2 + r1);
-      const p = a * (1 - e * e);
-
-      const denom = 1 + e * Math.cos(theta);
-      const r = p / denom;
-
-      // dr/dtheta
-      const dr = (p * e * Math.sin(theta)) / (denom * denom);
-
-      // x = r cosθ, y = r sinθ
-      const dx = dr * Math.cos(theta) - r * Math.sin(theta);
-      const dy = dr * Math.sin(theta) + r * Math.cos(theta);
-
-      return Math.atan2(dy, dx);
-    }
-
-    // 围绕“点的屏幕坐标中心”旋转 SVG image
-    function rotateSvgImageAroundPoint(img, pt, angleRad, offsetDeg = 0) {
-      if (!img || !img.rendNode || !pt || !pt.coords) return;
-      const cx = pt.coords.scrCoords[1];
-      const cy = pt.coords.scrCoords[2];
-      const deg = angleRad * 180 / Math.PI + offsetDeg;
-      img.rendNode.setAttribute('transform', `rotate(${deg} ${cx} ${cy})`);
-    }
-
-    function rebuildCurves() {
-      if (marsOrbit) board.removeObject(marsOrbit);
-      if (transferFull) board.removeObject(transferFull);
-      if (transferHalf) board.removeObject(transferHalf);
-
-      marsOrbit = board.create('circle', [sun, RM], {
-        strokeWidth: 1,
-        strokeColor: 'rgba(255,180,180,0.35)',
-        layer: 5
-      });
-
-
-
-      // 半圈强调（实线）
-      transferHalf = board.create('curve', [
-        function(t){ return ellipseXY(t, RM)[0]; },
-        function(t){ return ellipseXY(t, RM)[1]; },
-        0, Math.PI
-      ], {
-        strokeWidth: 3,
-        strokeColor: 'rgba(199,249,204,0.75)',
-        layer: 7
-      });
-
-      rendezvous.setPosition(JXG.COORDS_BY_USER, [-RM, 0]);
-      board.update();
-    }
-
-    // =========================
-    // 5) 动画
-    // =========================
-    let running = false;
-    let tDays = 0;
-    let lastTs = null;
-
-    function setBodiesAtTime(t) {
-      board.suspendUpdate();
-
-      const TM = getTM(RM);
-      const omegaM = TAU / TM;
-      const phi0 = deg2rad(phi0Deg);
-
-      const thE = omegaE * t;
-      const thM = phi0 + omegaM * t;
-
-      earth.setPosition(JXG.COORDS_BY_USER, [RE * Math.cos(thE), RE * Math.sin(thE)]);
-      mars.setPosition(JXG.COORDS_BY_USER, [RM * Math.cos(thM), RM * Math.sin(thM)]);
-
-      const { ttr } = getTransferTimeHohmann(RM);
-      const p = clamp(t / ttr, 0, 1);
-      const theta = p * Math.PI;
-      const [x, y] = ellipseXY(theta, RM);
-      probe.setPosition(JXG.COORDS_BY_USER, [x, y]);
-
-      // ✅ 卫星贴图沿速度方向旋转
-      const ang = tangentAngleOnTransfer(theta, RM);
-      rotateSvgImageAroundPoint(probeImg, probe, ang, SAT_ICON_OFFSET_DEG);
-
-      board.unsuspendUpdate();
-    }
-
-    function computeAndShowStatus(final=false) {
-      const TM = getTM(RM);
-      const omegaM = TAU / TM;
-      const { ttr } = getTransferTimeHohmann(RM);
-
-      const phiStar = getPhiStarDeg(RM);
-
-      document.getElementById('tmVal').textContent = TM.toFixed(1);
-      document.getElementById('ttrVal').textContent = ttr.toFixed(1);
-      document.getElementById('phiStarVal').textContent = phiStar.toFixed(1);
-
-      if (!final) return;
-
-      const phi0 = deg2rad(phi0Deg);
-      const thM_arr = phi0 + omegaM * ttr;
-      const err = wrapToPi(thM_arr - Math.PI);
-      const errDeg = rad2deg(err);
-
-      document.getElementById('errDeg').textContent = errDeg.toFixed(2);
-
-      const ok = Math.abs(errDeg) <= TOL_DEG;
-      const resultEl = document.getElementById('resultText');
-
-      if (ok) {
-        resultEl.textContent = '✅ 相遇成功（窗口对上了）';
-
-        // ✅ 视觉上“对接/相遇”：让探测器贴到火星位置
-        probe.setPosition(JXG.COORDS_BY_USER, [mars.X(), mars.Y()]);
-        board.update();
-
-        // ✅ 相遇时（theta=π）也把姿态对齐一下
-        rotateSvgImageAroundPoint(probeImg, probe, tangentAngleOnTransfer(Math.PI, RM), SAT_ICON_OFFSET_DEG);
-
-        triggerMeetFXSuccess();
-      } else {
-        const hint = (errDeg > 0)
-          ? '❌ 错过：你发射“晚了”（火星已在前方）'
-          : '❌ 错过：你发射“早了”（火星还在后方）';
-        resultEl.textContent = hint;
-
-        // ✅ 失败特效：红X + 方向箭头（早/晚）
-        triggerFailFX(errDeg);
-      }
-    }
-
-    function setButtons() {
-      document.getElementById('run').disabled = running;
-      document.getElementById('autoPhi').disabled = running;
-    }
-
-    function resetSim() {
-      running = false;
-      setButtons();
-      tDays = 0;
-      lastTs = null;
-
-      hideAllFX();           // ✅ 复位时关掉所有特效
-
-      setBodiesAtTime(0);
-
-      // ✅ 初始帧也对齐卫星姿态
-      rotateSvgImageAroundPoint(probeImg, probe, tangentAngleOnTransfer(0, RM), SAT_ICON_OFFSET_DEG);
-
-      document.getElementById('errDeg').textContent = '—';
-      document.getElementById('resultText').textContent = '未运行';
-      board.update();
-    }
-
-    function step(ts) {
-      if (!running) return;
-      if (lastTs === null) lastTs = ts;
-      const dtSec = (ts - lastTs) / 1000;
-      lastTs = ts;
-
-      tDays += dtSec * daysPerSec;
-
-      const { ttr } = getTransferTimeHohmann(RM);
-      if (tDays >= ttr) {
-        tDays = ttr;
-        setBodiesAtTime(tDays);
-        running = false;
-        setButtons();
-        computeAndShowStatus(true);
-        return;
-      }
-
-      setBodiesAtTime(tDays);
-      requestAnimationFrame(step);
-    }
-
-    // =========================
-    // 6) UI
-    // =========================
-    const rmEl = document.getElementById('rm');
-    const phiEl = document.getElementById('phi');
-    const spdEl = document.getElementById('spd');
-
-    function syncUI() {
-      document.getElementById('rmVal').textContent = Number(RM).toFixed(2);
-      document.getElementById('phiVal').textContent = Number(phi0Deg).toFixed(1);
-      document.getElementById('spdVal').textContent = String(daysPerSec);
-      computeAndShowStatus(false);
-    }
-
-    rmEl.addEventListener('input', () => {
-      RM = Number(rmEl.value);
-      rebuildCurves();
-      resetSim();
-      syncUI();
-    });
-
-    phiEl.addEventListener('input', () => {
-      phi0Deg = Number(phiEl.value);
-      resetSim();
-      syncUI();
-    });
-
-    spdEl.addEventListener('input', () => {
-      daysPerSec = Number(spdEl.value);
-      document.getElementById('spdVal').textContent = String(daysPerSec);
-    });
-
-    document.getElementById('autoPhi').addEventListener('click', () => {
-      const phiStar = getPhiStarDeg(RM);
-      phi0Deg = phiStar;
-      phiEl.value = String(phiStar);
-      resetSim();
-      syncUI();
-    });
-
-    document.getElementById('run').addEventListener('click', () => {
-      if (running) return;
-      resetSim();
-      running = true;
-      setButtons();
-      lastTs = null;
-      requestAnimationFrame(step);
-    });
-
-    document.getElementById('reset').addEventListener('click', () => {
-      resetSim();
-      syncUI();
-    });
-
-    // =========================
-    // 7) 初始化
-    // =========================
-    rebuildCurves();
-    resetSim();
-    syncUI();
-  </script>
 </body>
 </html>

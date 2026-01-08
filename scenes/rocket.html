@@ -8,7 +8,8 @@
   <style>
     :root { --bg:#0b1020; --panel:#121a33; --text:#e7ebff; --muted:#a9b1d6; --line:#2a3566; }
 
-    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    /* 默认：桌面用 100vh 固定布局，不让页面整体滚动（滚动由右侧面板内部承担） */
+    html, body { width: 100%; height: 100%; margin: 0; overflow-x: hidden; overflow-y: hidden; }
 
     body {
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", Arial, sans-serif;
@@ -170,6 +171,10 @@
       .wrap { grid-template-columns: 1fr; grid-template-rows: 60vh auto; height: auto; align-content: start; }
       .panel { height: auto; overflow: visible; }
       #stage { height: 60vh; }
+      /* 移动端（上下堆叠）需要页面可滚动，否则无法从画布滑到下面的面板 */
+      html, body { height: auto; overflow-y: auto; }
+      /* 允许在画布区域做“竖向滑动”触发页面滚动 */
+      #stage { touch-action: pan-y; }
     }
 
     @media (max-width: 520px) {
@@ -191,7 +196,7 @@
       <div>
         <div class="row" style="align-items:flex-start; gap:12px;">
           <div style="flex:1; min-width:0;">
-            <h1>火箭发射（高度–时间 · 初中数学）</h1>
+            <h1>火箭发射（高度–时间）</h1>
             <div class="hint">
               用二次函数 <span class="mono">h(t)=at²+bt+c</span> 描述“高度随时间变化”。<br/>
               <b>上升段</b>画实线，<b>下降段</b>画虚线（以顶点为分界）。
@@ -257,7 +262,7 @@
 
 
       <div class="status" id="status">
-        <div><b>实时计算（初中数学）</b></div>
+        <div><b>实时计算</b></div>
         <div>函数：<span class="mono" id="fnText">—</span></div>
         <div>顶点（最高点）：<span class="mono" id="vText">—</span></div>
         <div>能否到达 H：<span class="mono" id="deltaText">—</span></div>
@@ -308,10 +313,20 @@
     const toggleGridBtn = el('toggleGrid');
     const toMenuBtn = el('toMenu');
 
-    // 禁止在左侧画布区域滚动（触控板/触屏回弹会让画面“漂移”一点点）
+    // 禁止在左侧画布区域滚动（桌面：防止触控板/回弹让画面“漂移”）
+    // 但移动端（窄屏上下堆叠）需要允许在画布区域竖向滑动来滚到下面的面板。
+    const isStackedLayout = () => (window.matchMedia && window.matchMedia('(max-width: 980px)').matches);
+
     if (stageEl) {
-      stageEl.addEventListener('wheel', (e) => { e.preventDefault(); }, { passive: false });
-      stageEl.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
+      stageEl.addEventListener('wheel', (e) => {
+        if (isStackedLayout()) return;
+        e.preventDefault();
+      }, { passive: false });
+
+      stageEl.addEventListener('touchmove', (e) => {
+        if (isStackedLayout()) return; // 允许页面滚动
+        e.preventDefault();
+      }, { passive: false });
     }
 
     // =========================
@@ -683,7 +698,7 @@
       fnText.textContent = `h(t) = ${A.toFixed(2)}t² ${fmtSigned(B,1)}t ${fmtSigned(C,1)}`;
 
       const v = vertex();
-      vText.textContent = `t_v=${v.t.toFixed(2)},  h_v=${v.h.toFixed(2)}  （t_v=-b/(2a)）`;
+      vText.textContent = `t_v=${v.t.toFixed(2)},  h_v=${v.h.toFixed(2)}`;
 
       // 判别式针对 h(t)=H 的方程：A t^2 + B t + (C-HT)=0
       const hit = rootsForHeight(HT);

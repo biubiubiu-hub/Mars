@@ -168,18 +168,35 @@
     .small { font-size: 12px; color: var(--muted); }
 
     @media (max-width: 980px) {
-      .wrap { grid-template-columns: 1fr; grid-template-rows: 60vh auto; height: auto; align-content: start; }
-      .panel { height: auto; overflow: visible; }
-      #stage { height: 60vh; }
-      /* 移动端（上下堆叠）需要页面可滚动，否则无法从画布滑到下面的面板 */
-      html, body { height: auto; overflow-y: auto; }
-      /* 允许在画布区域做“竖向滑动”触发页面滚动 */
-      #stage { touch-action: pan-y; }
+      /* 移动端：上方画布固定显示；仅下方参数面板内部滚动 */
+      html, body { height: 100%; overflow: hidden; }
+
+      .wrap {
+        grid-template-columns: 1fr;
+        grid-template-rows: 60vh 1fr;
+        height: 100vh;
+        align-content: stretch;
+      }
+
+      /* 上方画布固定高度（兼容移动端地址栏变化） */
+      #stage { height: 60vh; height: 60dvh; }
+
+      /* 下方面板占剩余空间并在内部滚动 */
+      .card.panel { height: 100%; }
+      .panel {
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* 画布区域不触发页面滚动（页面本身已禁止滚动） */
+      #stage { touch-action: none; }
     }
 
     @media (max-width: 520px) {
-      .wrap { grid-template-rows: 52vh auto; }
-      #stage { height: 52vh; }
+      .wrap { grid-template-rows: 52vh 1fr; }
+      #stage { height: 52vh; height: 52dvh; }
     }
   </style>
 </head>

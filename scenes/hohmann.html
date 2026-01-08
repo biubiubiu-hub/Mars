@@ -12,7 +12,7 @@
   <style>
     :root { --bg:#0b1020; --panel:#121a33; --text:#e7ebff; --muted:#a9b1d6; --line:#2a3566; }
 
-    html, body { width: 100%; height: 100%; margin: 0; overflow-x: hidden; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow-x: hidden; overflow-y: hidden; }
 
     body {
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", Arial, sans-serif;
@@ -85,7 +85,22 @@
       pointer-events: none;
     }
 
-    .panel { padding: 14px; display:flex; flex-direction: column; gap: 12px; }
+    .panel {
+      padding: 14px;
+      display:flex;
+      flex-direction: column;
+      gap: 12px;
+
+      /* 右侧内容多时：允许面板自身滚动，页面不滚动 */
+      height: calc(100vh - 24px);
+      height: calc(100dvh - 24px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* 右侧参数卡片允许滑块圆点“溢出”，避免被 card 的 overflow 裁切造成遮挡 */
+    .panel .card { overflow: visible; }
 
     h1 { font-size: 16px; margin: 0 0 6px 0; }
     .row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
@@ -117,13 +132,35 @@
     .small { font-size: 12px; color: var(--muted); }
 
     @media (max-width: 980px) {
-      .wrap { grid-template-columns: 1fr; grid-template-rows: 60vh auto; height: auto; align-content: start; }
-      #box { height: 60vh; }
+      /* 移动端：上方画布固定显示；仅下方参数面板内部滚动 */
+      html, body { height: 100%; overflow: hidden; }
+
+      .wrap {
+        grid-template-columns: 1fr;
+        grid-template-rows: 60vh 1fr;
+        height: 100vh;
+        align-content: stretch;
+      }
+
+      /* 上方画布固定高度（兼容移动端地址栏变化） */
+      #box { height: 60vh; height: 60dvh; }
+
+      /* 下方面板占剩余空间并在内部滚动 */
+      .card.panel { height: 100%; }
+      .panel {
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* 画布区域不触发页面滚动（页面本身已禁止滚动） */
+      #box { touch-action: none; }
     }
 
     @media (max-width: 520px) {
-      .wrap { grid-template-rows: 52vh auto; }
-      #box { height: 52vh; }
+      .wrap { grid-template-rows: 52vh 1fr; }
+      #box { height: 52vh; height: 52dvh; }
     }
   </style>
 </head>
@@ -138,7 +175,7 @@
       <div>
         <div class="row" style="align-items:flex-start; gap:12px;">
           <div style="flex:1; min-width:0;">
-            <h1>霍曼转移（科普互动）</h1>
+            <h1>霍曼转移</h1>
             <div class="hint">
               目标：让“飞行器”沿半椭圆到达火星轨道交点时，火星也刚好到那里。
             </div>
